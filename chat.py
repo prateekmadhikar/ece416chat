@@ -137,7 +137,7 @@ chat = ChatService()
 
 
 @app.route('/', methods=['GET'])
-def status_check():
+def hello_world():
     return 'Hello World', 200
 
 
