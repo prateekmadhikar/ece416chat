@@ -155,7 +155,6 @@ def socket_in_handler(ws):
         if not message:
             return
 
-        app.logger.info(u'Socket message: {}'.format(message))
         json_dict = deserialize(message)
         action = json_dict.get('action')
 
