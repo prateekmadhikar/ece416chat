@@ -1,26 +1,16 @@
-import json
-import os
-
 from __future__ import absolute_import
+
 from flask import Flask
 from flask_sockets import Sockets
 
 from models.group import Group
 from models.user import User
+from utils import serialize, deserialize
 
 app = Flask(__name__)
-app.debug = 'DEBUG' in os.environ or True
+app.debug = True
 
 sockets = Sockets(app)
-
-def serialize(obj):
-    return json.dumps(obj).encode('utf-8')
-
-def deserialize(str):
-    try:
-        return json.loads(str.decode('utf-8'))
-    except Exception:
-        return str
 
 class ChatService(object):
 
