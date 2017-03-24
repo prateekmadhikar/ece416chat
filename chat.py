@@ -136,6 +136,11 @@ class ChatService(object):
 chat = ChatService()
 
 
+@app.route('/', methods=['GET'])
+def status_check():
+    return 'Hello World', 200
+
+
 @app.route('/status', methods=['GET'])
 def status_check():
     return 'Success', 200
