@@ -154,6 +154,8 @@ def socket_in_handler(ws):
         if not message:
             return
 
+        _send_ack(ws)
+
         json_dict = deserialize(message)
         action = json_dict.get('action')
 
@@ -174,3 +176,7 @@ def socket_in_handler(ws):
         else:
             app.logger.info(u'Got socket message with invalid action: {}'.format(action))
             pass
+
+
+def _send_ack(socket):
+    socket.send('ack')
