@@ -99,9 +99,9 @@ class ChatService(object):
 
             app.logger.info(u'Flushed chat users and groups')
 
-            socket.send({'success': True})
+            socket.send(serialize({'success': True}))
         else:
-            socket.send({'error': True, 'message': 'Access denied.'})
+            socket.send(serialize({'error': True, 'message': 'Access denied.'}))
 
     def _clean_dead_users(self):
         old_len = len(self.users)
