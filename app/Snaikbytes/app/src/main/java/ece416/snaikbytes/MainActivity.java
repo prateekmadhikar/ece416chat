@@ -1,17 +1,20 @@
 package ece416.snaikbytes;
 
+import android.content.Intent;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.view.View;
 
 public class MainActivity extends AppCompatActivity {
-
-    private MessageManager mMessageManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+    }
 
-        mMessageManager = new MessageManager(this);
+    public void startChatActivity(View view) {
+        Intent intent = new Intent(this, ChatActivity.class);
+        startActivity(intent);
     }
 }

@@ -2,7 +2,7 @@ package ece416.snaikbytes;
 
 import android.app.Activity;
 import android.util.Log;
-import android.widget.EditText;
+import android.widget.TextView;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
@@ -44,7 +44,7 @@ public class MessageManager {
             }
 
             public void run() {
-                EditText msgText = (EditText) mActivity.findViewById(mViewId);
+                TextView msgText = (TextView) mActivity.findViewById(mViewId);
                 msgText.setText(mMsg);
             }
         }
