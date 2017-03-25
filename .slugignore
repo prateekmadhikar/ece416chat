@@ -1,0 +1,2 @@
+# This tells Heroku to ignore the following files/folders
+app/
