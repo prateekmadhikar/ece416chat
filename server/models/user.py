@@ -18,6 +18,8 @@ class User:
     def is_alive(self):
         return self.socket.closed is False
 
+    def send_ack(self):
+        self.socket.send(serialize({'type': 'ack'}))
 
     def send_message(self, group, from_user, message):
         message = {
