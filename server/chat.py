@@ -54,7 +54,7 @@ class ChatService(object):
 
         socket.send(serialize({'type': 'list_group_users', 'users': users}))
 
-    def add_user_to_group(self, user_id, group_id):
+    def add_user_to_group(self, user_id, group_id, socket):
         user = self._get_user_by_id(user_id)
         group = self._get_group_by_id(group_id)
 
@@ -62,7 +62,7 @@ class ChatService(object):
             socket.send(serialize({'type': 'error', 'message': 'Invalid user ID'}))
 
         if not group:
-            group = Group(group_id, 'group_{}'.format(group_id), user)
+            group = Group(group_id, user)
             self.groups.append(group)
         else:
             group.add_user(user)
@@ -71,7 +71,7 @@ class ChatService(object):
 
         app.logger.info(u'Added user {} to group {}'.format(user_id, group_id))
 
-    def remove_user_from_group(self, user_id, group_id):
+    def remove_user_from_group(self, user_id, group_id, socket):
         user = self._get_user_by_id(user_id)
         group = self._get_group_by_id(group_id)
 
@@ -83,7 +83,7 @@ class ChatService(object):
 
         app.logger.info(u'Removed user {} from group {} '.format(user_id, group_id))
 
-    def send_message(self, user_id, group_id, message):
+    def send_message(self, user_id, group_id, message, socket):
         self._clean_dead_users()
 
         user = self._get_user_by_id(user_id)
@@ -111,13 +111,13 @@ class ChatService(object):
         # Remove the dead users from the groups they're in
         for u in dead_users:
             if u.id in self.user_group_map:
-                group = self._get_group_by_id(self.user_group_map[u.id])
-                group.remove(u)
+                group = self._get_group_by_id(self.user_group_map[u.id].id)
+                group.remove_user(u)
 
                 self.user_group_map.pop(u.id)
 
         if dead_users:
-            app.logger.info(u'Cleaned up {} dead connections'.format(len(self.dead_users)))
+            app.logger.info(u'Cleaned up {} dead connections'.format(len(dead_users)))
 
     def _get_group_by_id(self, group_id):
         for g in self.groups:
@@ -152,7 +152,6 @@ def socket_in_handler(ws):
         if not message:
             return
 
-
         json_dict = deserialize(message)
         action = json_dict.get('action')
 
@@ -164,13 +163,13 @@ def socket_in_handler(ws):
         elif action == 'list_group_users':
             chat.list_group_users(json_dict.get('group_id'), ws)
         elif action == 'join_group':
-            chat.add_user_to_group(json_dict.get('user_id'), json_dict.get('group_id'))
+            chat.add_user_to_group(json_dict.get('user_id'), json_dict.get('group_id'), ws)
             _send_ack(ws)
         elif action == 'leave_group':
-            chat.remove_user_from_group(json_dict.get('user_id'), json_dict.get('group_id'))
+            chat.remove_user_from_group(json_dict.get('user_id'), json_dict.get('group_id'), ws)
             _send_ack(ws)
         elif action == 'message':
-            chat.send_message(json_dict.get('user_id'), json_dict.get('group_id'), json_dict.get('message'))
+            chat.send_message(json_dict.get('user_id'), json_dict.get('group_id'), json_dict.get('message'), ws)
         elif action == 'flush':
             chat.flush_data(json_dict.get('user_id'), ws)
             _send_ack(ws)
@@ -181,3 +180,11 @@ def socket_in_handler(ws):
 
 def _send_ack(socket):
     socket.send(serialize({'type': 'ack'}))
+
+# Uncomment the following to run locally and run 'python chat.py' from the root folder
+if __name__ == "__main__":
+    from gevent import pywsgi
+    from geventwebsocket.handler import WebSocketHandler
+    server = pywsgi.WSGIServer(('', 5000), app, handler_class=WebSocketHandler)
+    server.serve_forever()
+
