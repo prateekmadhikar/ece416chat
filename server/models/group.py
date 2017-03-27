@@ -12,6 +12,8 @@ class Group:
         for user in self.users:
             if user != from_user:
                 user.send_message(self, from_user, message)
+            else:
+                user.send_ack()
 
     def has_user(self, user):
         return user in self.users
