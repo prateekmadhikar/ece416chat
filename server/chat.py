@@ -30,6 +30,7 @@ class ChatService(object):
             self.users.append(user)
             app.logger.info(u'Registered user {}'.format(user_id))
         else:
+            # TODO: Overwrite current user with new socket
             app.logger.info('User tried to register with taken id')
 
     def list_groups(self, socket):
@@ -102,8 +103,6 @@ class ChatService(object):
 
         app.logger.info(u'Flushed chat users and groups')
 
-        _send_ack(socket)
-
     def _clean_dead_users(self):
         old_len = len(self.users)
 
@@ -155,25 +154,28 @@ def socket_in_handler(ws):
         if not message:
             return
 
-        _send_ack(ws)
 
         json_dict = deserialize(message)
         action = json_dict.get('action')
 
         if action == 'register':
             chat.register_user(json_dict.get('user_id'), ws)
+            _send_ack(ws)
         elif action == 'list_groups':
             chat.list_groups(ws)
         elif action == 'list_group_users':
             chat.list_group_users(json_dict.get('group_id'), ws)
         elif action == 'join_group':
             chat.add_user_to_group(json_dict.get('user_id'), json_dict.get('group_id'))
+            _send_ack(ws)
         elif action == 'leave_group':
             chat.remove_user_from_group(json_dict.get('user_id'), json_dict.get('group_id'))
+            _send_ack(ws)
         elif action == 'message':
             chat.send_message(json_dict.get('user_id'), json_dict.get('group_id'), json_dict.get('message'))
         elif action == 'flush':
             chat.flush_data(json_dict.get('user_id'), ws)
+            _send_ack(ws)
         else:
             app.logger.info(u'Got socket message with invalid action: {}'.format(action))
             pass
