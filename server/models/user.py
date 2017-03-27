@@ -16,15 +16,8 @@ class User:
 
     @property
     def is_alive(self):
-        message = {
-            'type': 'status'
-        }
+        return self.socket.closed is False
 
-        try:
-            self.socket.send(serialize(message))
-            return True
-        except Exception:
-            return False
 
     def send_message(self, group, from_user, message):
         message = {
