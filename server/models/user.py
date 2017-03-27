@@ -7,8 +7,7 @@ def serialize(obj):
 
 class User:
 
-    def __init__(self, name, id, socket):
-        self.name = name
+    def __init__(self, id, socket):
         self.id = id
         self.socket = socket
 
