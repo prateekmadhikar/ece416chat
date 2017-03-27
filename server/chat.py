@@ -182,9 +182,9 @@ def _send_ack(socket):
     socket.send(serialize({'type': 'ack'}))
 
 # Uncomment the following to run locally and run 'python chat.py' from the root folder
-if __name__ == "__main__":
-    from gevent import pywsgi
-    from geventwebsocket.handler import WebSocketHandler
-    server = pywsgi.WSGIServer(('', 5000), app, handler_class=WebSocketHandler)
-    server.serve_forever()
+# if __name__ == "__main__":
+#     from gevent import pywsgi
+#     from geventwebsocket.handler import WebSocketHandler
+#     server = pywsgi.WSGIServer(('', 5000), app, handler_class=WebSocketHandler)
+#     server.serve_forever()
 
