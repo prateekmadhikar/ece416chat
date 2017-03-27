@@ -4,12 +4,13 @@ import android.app.Activity;
 import android.util.Log;
 import android.widget.TextView;
 
-import java.io.BufferedInputStream;
+import org.java_websocket.client.WebSocketClient;
+import org.java_websocket.handshake.ServerHandshake;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
+import java.net.URI;
 
 /**
  * Created by mcoppola on 24/03/17.
@@ -19,6 +20,7 @@ public class MessageManager {
 
     //Activity is used to allow threads to write to the UI
     Activity mActivity;
+    WebSocketClient mWebSocketClient;
 
     public MessageManager(Activity activity)
     {
@@ -60,62 +62,46 @@ public class MessageManager {
         }).start();
     }
 
-    private String ReadStream(InputStream stream)
-    {
-        try {
-            ByteArrayOutputStream outputBytes = new ByteArrayOutputStream();
-            int dataByte = stream.read();
-            while(dataByte != -1) {
-                outputBytes.write(dataByte);
-                dataByte = stream.read();
-            }
-            return outputBytes.toString();
-        } catch (IOException e) {
-            return "";
-        }
-    }
-
     private void StatusTask()
     {
-        URL url;
+        URI uri;
         try {
-            url = new URL("https://ece416chat.herokuapp.com/status");
+            uri = new URI("ws://ece416chat.herokuapp.com/status");
         } catch(Exception e) {
             Log.d("Exceptions", "Error Malformed URL " + e);
             return;
         }
 
-        while(true)
-        {
-            String response = "";
+        mWebSocketClient = new WebSocketClient(uri) {
+            @Override
+            public void onOpen(ServerHandshake serverHandshake) {
+                Log.i("Websocket", "Opened");
+            }
 
-            try {
-                HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
-                try {
-                    InputStream in = new BufferedInputStream(urlConnection.getInputStream());
-                    response = ReadStream(in);
-                } catch (Exception e) {
-                    Log.d("Exceptions", "Error Reading Server Response " + e);
-                } finally {
-                    urlConnection.disconnect();
+            @Override
+            public void onMessage(String message) {
+                Log.i("Websocket", message);
+
+                if (message.equals("Success"))
+                {
+                    UpdateUIText("Status Up", R.id.statusText);
+                } else {
+                    UpdateUIText("Status Down", R.id.statusText);
                 }
-            } catch (Exception e) {
-                Log.d("Exceptions", "Error Initiating Connection with Server " + e);
             }
 
-            if (response.equals("Success"))
-            {
-                UpdateUIText("Status Up", R.id.statusText);
-            } else {
-                UpdateUIText("Status Down", R.id.statusText);
+            @Override
+            public void onClose(int i, String s, boolean b) {
+                Log.i("Websocket", "Closed " + s);
             }
 
-            try {
-                Thread.sleep(4500);
-            } catch (Exception e) {
-                Log.d("Exceptions", "Thread Interrupt Exception, not sleeping " + e);
+            @Override
+            public void onError(Exception e) {
+                Log.i("Websocket", "Error " + e.getMessage());
             }
-        }
+        };
+
+        mWebSocketClient.connect();
     }
 
 
