@@ -29,7 +29,8 @@ class User:
 
     def send_message(self, group, from_user, message):
         message = {
-            'group': group.id,
+            'type': 'message',
+            'group_id': group.id,
             'from': from_user.id,
             'message': message
         }

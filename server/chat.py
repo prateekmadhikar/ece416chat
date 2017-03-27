@@ -10,6 +10,10 @@ from utils import serialize, deserialize
 app = Flask(__name__)
 app.debug = True
 
+# Uncomment following line to run locally. Run 'python chat.py' from the
+# server folder to run it
+# app.run(port=5000, debug=True)
+
 sockets = Sockets(app)
 
 class ChatService(object):
@@ -19,8 +23,8 @@ class ChatService(object):
         self.users = []
         self.user_group_map = {}
 
-    def register_user(self, user_name, user_id, socket):
-        user = User(user_name, user_id, socket)
+    def register_user(self, user_id, socket):
+        user = User(user_id, socket)
 
         if not user in self.users:
             self.users.append(user)
@@ -33,11 +37,10 @@ class ChatService(object):
 
         for group in self.groups:
             group_dict[group.id] = {
-                'name': group.name,
                 'num_users': group.num_users
             }
 
-        socket.send(serialize(group_dict))
+        socket.send(serialize({'type': 'list_groups', 'groups': group_dict}))
 
     def list_group_users(self, group_id, socket):
         group = self._get_group_by_id(group_id)
@@ -46,7 +49,8 @@ class ChatService(object):
             socket.send(serialize({'error': True, 'message': 'Invalid group ID: {}'.format(group_id)}))
 
         users = {
-            'users': [{'name': u.name, 'id': u.id} for u in group.users]
+            'type': 'list_group_users',
+            'users': [{'user_id': u.id} for u in group.users]
         }
 
         socket.send(serialize(users))
@@ -92,16 +96,13 @@ class ChatService(object):
         group.broadcast(user, message)
 
     def flush_data(self, user_id, socket):
-        if user_id == 'sudo':
-            self.users = []
-            self.groups = []
-            self.user_group_map = {}
+        self.users = []
+        self.groups = []
+        self.user_group_map = {}
 
-            app.logger.info(u'Flushed chat users and groups')
+        app.logger.info(u'Flushed chat users and groups')
 
-            socket.send(serialize({'success': True}))
-        else:
-            socket.send(serialize({'error': True, 'message': 'Access denied.'}))
+        _send_ack(socket)
 
     def _clean_dead_users(self):
         old_len = len(self.users)
@@ -160,10 +161,10 @@ def socket_in_handler(ws):
         action = json_dict.get('action')
 
         if action == 'register':
-            chat.register_user(json_dict.get('name'), json_dict.get('id'), ws)
+            chat.register_user(json_dict.get('user_id'), ws)
         elif action == 'list_groups':
             chat.list_groups(ws)
-        elif action == 'list_users':
+        elif action == 'list_group_users':
             chat.list_group_users(json_dict.get('group_id'), ws)
         elif action == 'join_group':
             chat.add_user_to_group(json_dict.get('user_id'), json_dict.get('group_id'))
@@ -179,4 +180,4 @@ def socket_in_handler(ws):
 
 
 def _send_ack(socket):
-    socket.send('ack')
+    socket.send(serialize({'type': 'ack'}))
