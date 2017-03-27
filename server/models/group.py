@@ -1,9 +1,8 @@
 class Group:
 
-    def __init__(self, id, name, user):
-        self.name = name
+    def __init__(self, id, user):
         self.id = id
-        self.users = [user]
+        self.users = [user] if user else []
 
     @property
     def num_users(self):

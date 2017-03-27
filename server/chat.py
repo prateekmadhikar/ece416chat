@@ -19,7 +19,7 @@ sockets = Sockets(app)
 class ChatService(object):
 
     def __init__(self):
-        self.groups = []
+        self.groups = [Group('Group {}'.format(i), None) for i in range(5)]
         self.users = []
         self.user_group_map = {}
 
@@ -98,7 +98,7 @@ class ChatService(object):
 
     def flush_data(self, user_id, socket):
         self.users = []
-        self.groups = []
+        self.groups = [Group('Group {}'.format(i), None) for i in range(5)]
         self.user_group_map = {}
 
         app.logger.info(u'Flushed chat users and groups')
