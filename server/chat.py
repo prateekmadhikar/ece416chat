@@ -10,10 +10,6 @@ from utils import serialize, deserialize
 app = Flask(__name__)
 app.debug = True
 
-# Uncomment following line to run locally. Run 'python chat.py' from the
-# server folder to run it
-# app.run(port=5000, debug=True)
-
 sockets = Sockets(app)
 
 class ChatService(object):
