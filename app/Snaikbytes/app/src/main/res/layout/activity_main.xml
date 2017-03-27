@@ -25,4 +25,12 @@
         android:layout_width="wrap_content"
         android:text="Chat"
         android:onClick="startChatActivity" />
+
+    <Button
+        android:id="@+id/listGroup"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:onClick="ListGroups"
+        android:text="List Groups" />
+
 </LinearLayout>

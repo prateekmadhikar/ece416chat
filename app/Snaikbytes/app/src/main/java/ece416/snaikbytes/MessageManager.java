@@ -4,12 +4,22 @@ import android.app.Activity;
 import android.util.Log;
 import android.widget.TextView;
 
+import org.java_websocket.client.WebSocketClient;
+import org.java_websocket.handshake.ServerHandshake;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Created by mcoppola on 24/03/17.
@@ -19,11 +29,60 @@ public class MessageManager {
 
     //Activity is used to allow threads to write to the UI
     Activity mActivity;
+    WebSocketClient mWebSocketClient;
 
     public MessageManager(Activity activity)
     {
         mActivity = activity;
-        StartStatusThread();
+        ConnectWebSocket();
+        //StartStatusThread();
+    }
+
+    private void ConnectWebSocket() {
+        URI uri;
+        try {
+            uri = new URI("ws://ece416chat.herokuapp.com"); //could try :5000
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+            return;
+        }
+
+        mWebSocketClient = new WebSocketClient(uri) {
+            @Override
+            public void onOpen(ServerHandshake serverHandshake) {
+                Log.i("Websocket", "Opened");
+                //TODO handle
+            }
+
+            @Override
+            public void onMessage(String s) {
+                final String message = s;
+                Log.i("Websocket", "Message Recieved " + s);
+                //TODO Implement
+            }
+
+            @Override
+            public void onClose(int i, String s, boolean b) {
+                Log.i("Websocket", "Closed " + s);
+            }
+
+            @Override
+            public void onError(Exception e) {
+                Log.i("Websocket", "Error " + e.getMessage());
+            }
+        };
+        mWebSocketClient.connect();
+    }
+
+    public void GetGroupList()
+    {
+        JSONObject request = new JSONObject();
+        try {
+            request.put("action", "list_groups");
+            mWebSocketClient.send(request.toString().getBytes(StandardCharsets.UTF_8));
+        } catch (JSONException e) {
+            Log.d("Exceptions", "JSON Error " + e);
+        }
     }
 
     /*
@@ -118,6 +177,9 @@ public class MessageManager {
         }
     }
 
-
 }
+
+
+
+
 
