@@ -34,34 +34,36 @@ class ChatService(object):
             app.logger.info('User tried to register with taken id')
 
     def list_groups(self, socket):
-        group_dict = {}
+        groups = []
 
         for group in self.groups:
-            group_dict[group.id] = {
+            groups.append({
+                'group_id': group.id,
                 'num_users': group.num_users
-            }
+            })
 
-        socket.send(serialize({'type': 'list_groups', 'groups': group_dict}))
+        socket.send(serialize({'type': 'list_groups', 'groups': groups}))
 
     def list_group_users(self, group_id, socket):
         group = self._get_group_by_id(group_id)
 
         if not group:
-            socket.send(serialize({'error': True, 'message': 'Invalid group ID: {}'.format(group_id)}))
+            socket.send(serialize({'type': 'error', 'message': 'Invalid group ID: {}'.format(group_id)}))
 
-        users = {
-            'type': 'list_group_users',
-            'users': [{'user_id': u.id} for u in group.users]
-        }
+        users = []
+        for user in group.users:
+            users.append({
+                'user_id': user.id
+            })
 
-        socket.send(serialize(users))
+        socket.send(serialize({'type': 'list_group_users', 'users': users}))
 
     def add_user_to_group(self, user_id, group_id):
         user = self._get_user_by_id(user_id)
         group = self._get_group_by_id(group_id)
 
         if not user:
-            socket.send(serialize({'error': True, 'message': 'Invalid user ID'}))
+            socket.send(serialize({'type': 'error', 'message': 'Invalid user ID'}))
 
         if not group:
             group = Group(group_id, 'group_{}'.format(group_id), user)
@@ -78,7 +80,7 @@ class ChatService(object):
         group = self._get_group_by_id(group_id)
 
         if not user or not group:
-            socket.send(serialize({'error': True, 'message': 'Invalid group or user ID'}))
+            socket.send(serialize({'type': 'error', 'message': 'Invalid group or user ID'}))
 
         group.remove_user(user)
         self.user_group_map[user.id] = None
@@ -92,7 +94,7 @@ class ChatService(object):
         group = self._get_group_by_id(group_id)
 
         if not user or not group:
-            socket.send(serialize({'error': True, 'message': 'Invalid group or user ID'}))
+            socket.send(serialize({'type': 'error', 'message': 'Invalid group or user ID'}))
 
         group.broadcast(user, message)
 
