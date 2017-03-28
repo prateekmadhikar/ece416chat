@@ -12,25 +12,15 @@
 
     <TextView
         android:id="@+id/text"
-        android:layout_width="215dp"
-        android:layout_height="43dp"
-        android:ems="10"
-        android:inputType="text"
-        android:text="List of Chats"
-        tools:layout_editor_absoluteX="16dp"
-        tools:layout_editor_absoluteY="6dp" />
-
-    <Button
-        android:layout_height="wrap_content"
-        android:layout_width="wrap_content"
-        android:text="Chat"
-        android:onClick="startChatActivity" />
-
-    <Button
-        android:id="@+id/listGroup"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:onClick="ListGroups"
-        android:text="List Groups" />
+        android:textSize="32sp"
+        android:text="SnaikBytes" />
+
+    <ListView
+        android:id="@+id/listOfGroups"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" >
+    </ListView>
 
 </LinearLayout>

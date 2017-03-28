@@ -1,30 +1,48 @@
 package ece416.snaikbytes;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 
-public class ChatActivity extends AppCompatActivity {
-    private MessageManager mMessageManager;
+import java.io.Serializable;
+
+public class ChatActivity extends AppCompatActivity implements Serializable {
+
+    MessageManager mMessageManager;
+    String groupID;
+    String userID;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_chat);
 
-        mMessageManager = new MessageManager(this);
+        Intent intent = this.getIntent();
+        Bundle bundle = intent.getExtras();
+
+        if (bundle != null) {
+            if (bundle.containsKey("userID")) {
+                userID = (String) bundle.getSerializable("userID");
+            }
+            if (bundle.containsKey("groupID")) {
+                groupID = (String) bundle.getSerializable("groupID");
+            }
+        }
+
+        mMessageManager = new MessageManager(this, userID, groupID);
     }
 
     public void showGroup(View view) {
-        // TODO: Show the group members
+        mMessageManager.GetGroupUsers();
     }
 
     public void joinGroup(View view) {
-        // TODO: Join the chat group
+        mMessageManager.JoinGroup();
     }
 
     public void quitGroup(View view) {
-        // TODO: Quit the chat group
+        mMessageManager.LeaveGroup();
     }
 
     public void sendMessage(View view) {
