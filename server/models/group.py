@@ -1,9 +1,8 @@
 class Group:
 
-    def __init__(self, id, name, user):
-        self.name = name
+    def __init__(self, id, user):
         self.id = id
-        self.users = [user]
+        self.users = [user] if user else []
 
     @property
     def num_users(self):
@@ -13,6 +12,8 @@ class Group:
         for user in self.users:
             if user != from_user:
                 user.send_message(self, from_user, message)
+            else:
+                user.send_ack()
 
     def has_user(self, user):
         return user in self.users
