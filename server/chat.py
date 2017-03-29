@@ -67,7 +67,10 @@ class ChatService(object):
         else:
             group.add_user(user)
 
-        self.user_group_map[user.id] = group
+        if user.id in self.user_group_map:
+            self.user_group_map[user.id].append(group)
+        else:
+            self.user_group_map[user.id] = [group]
 
         app.logger.info(u'Added user {} to group {}'.format(user_id, group_id))
 
@@ -79,7 +82,8 @@ class ChatService(object):
             socket.send(serialize({'type': 'error', 'message': 'Invalid group or user ID'}))
 
         group.remove_user(user)
-        self.user_group_map[user.id] = None
+
+        self.user_group_map[user.id].pop(group)
 
         app.logger.info(u'Removed user {} from group {} '.format(user_id, group_id))
 
@@ -113,8 +117,9 @@ class ChatService(object):
         # Remove the dead users from the groups they're in
         for u in dead_users:
             if u.id in self.user_group_map:
-                group = self._get_group_by_id(self.user_group_map[u.id].id)
-                group.remove_user(u)
+                if self.user_group_map[u.id]:
+                    for group in self.user_group_map[u.id]:
+                        self._get_group_by_id(group.id).remove_user(u)
 
                 self.user_group_map.pop(u.id)
 
