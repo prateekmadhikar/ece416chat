@@ -17,8 +17,10 @@ import java.io.Serializable;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
+import java.util.AbstractQueue;
 import java.util.ArrayList;
 import java.util.Vector;
+import java.util.concurrent.ArrayBlockingQueue;
 
 /**
  * Created by mcoppola on 24/03/17.
@@ -33,6 +35,7 @@ public final class MessageManager implements Serializable {
     static String currentGroupID;
     static Vector<String> mActiveGroups;
     static boolean mShowStatus;
+    ArrayBlockingQueue<JSONObject> mMessageQueue = new ArrayBlockingQueue<JSONObject>(100);
 
     static MessageManager self = null;
 
@@ -89,6 +92,7 @@ public final class MessageManager implements Serializable {
                 }
                 UpdateUIText("Status Up", R.id.statusText);
                 Register();
+                FlushMessageQueue();
             }
 
             @Override
@@ -115,6 +119,16 @@ public final class MessageManager implements Serializable {
             }
         };
         mWebSocketClient.connect();
+    }
+
+    private void SendJSON(JSONObject json)
+    {
+        if (mWebSocketClient.getReadyState() == WebSocket.READYSTATE.OPEN) {
+            mWebSocketClient.send(json.toString().getBytes(StandardCharsets.UTF_8));
+        } else {
+            Log.i("Websocket", "Buffering Messages");
+            mMessageQueue.add(json);
+        }
     }
 
     private void ParseJSon(String data) throws JSONException
@@ -155,15 +169,6 @@ public final class MessageManager implements Serializable {
         }
     }
 
-    private void SendJSON(JSONObject json)
-    {
-        if (mWebSocketClient.getReadyState() == WebSocket.READYSTATE.OPEN) {
-            mWebSocketClient.send(json.toString().getBytes(StandardCharsets.UTF_8));
-        } else {
-            //TODO implement message buffering
-        }
-    }
-
     public void JoinGroup() {
         JSONObject jsonMessage = new JSONObject();
         try {
@@ -187,6 +192,15 @@ public final class MessageManager implements Serializable {
             SendJSON(jsonMessage);
         } catch (JSONException e) {
             Log.d("Exceptions", "JSON Error " + e);
+        }
+    }
+
+    private void FlushMessageQueue()
+    {
+        while(mMessageQueue.size() > 0)
+        {
+            SendJSON(mMessageQueue.remove());
+            //TODO Consider a delay if constant sending is no good
         }
     }
 
