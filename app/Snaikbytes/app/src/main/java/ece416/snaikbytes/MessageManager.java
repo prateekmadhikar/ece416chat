@@ -196,6 +196,25 @@ public final class MessageManager implements Serializable {
         }
     }
 
+    public void LeaveGroup()
+    {
+        JSONObject request = new JSONObject();
+        try {
+            request.put("action", "leave_group");
+            request.put("user_id", userID);
+            request.put("group_id", currentGroupID);
+            SendJSON(request);
+        } catch (JSONException e) {
+            Log.d("Exceptions", "JSON Error " + e);
+        }
+
+        if(mGroupChats.containsKey(currentGroupID))
+        {
+            mGroupChats.remove(currentGroupID);
+        }
+        Log.i("Websocket", "Leaving group " + currentGroupID);
+    }
+
     private void FlushMessageQueue()
     {
         while(mMessageQueue.size() > 0)
@@ -239,25 +258,6 @@ public final class MessageManager implements Serializable {
         } catch (JSONException e) {
             Log.d("Exceptions", "JSON Error " + e);
         }
-    }
-
-    public void LeaveGroup()
-    {
-        JSONObject request = new JSONObject();
-        try {
-            request.put("action", "leave_group");
-            request.put("user_id", userID);
-            request.put("group_id", currentGroupID);
-            SendJSON(request);
-        } catch (JSONException e) {
-            Log.d("Exceptions", "JSON Error " + e);
-        }
-
-        if(mGroupChats.containsKey(currentGroupID))
-        {
-            mGroupChats.remove(currentGroupID);
-        }
-        Log.i("Websocket", "Leaving group " + currentGroupID);
     }
 
     /*
