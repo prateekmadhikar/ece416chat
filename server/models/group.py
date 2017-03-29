@@ -21,7 +21,11 @@ class Group:
     def add_user(self, user):
         if not self.has_user(user):
             self.users.append(user)
+            return True
+        return False
 
     def remove_user(self, user):
         if self.has_user(user):
             self.users.remove(user)
+            return True
+        return False

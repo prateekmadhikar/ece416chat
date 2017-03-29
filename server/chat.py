@@ -64,15 +64,18 @@ class ChatService(object):
         if not group:
             group = Group(group_id)
             self.groups.append(group)
-        else:
-            group.add_user(user)
 
-        if user.id in self.user_group_map:
+        added = group.add_user(user)
+
+        if user.id in self.user_group_map and added:
             self.user_group_map[user.id].append(group)
-        else:
+        elif added:
             self.user_group_map[user.id] = [group]
 
-        app.logger.info(u'Added user {} to group {}'.format(user_id, group_id))
+        if added:
+            app.logger.info(u'Added user {} to group {}'.format(user_id, group_id))
+        else:
+            app.logger.info(u'Tried to add user {} to group {} but they already in there lmfaoo'.format(user_id, group_id))
 
     def remove_user_from_group(self, user_id, group_id, socket):
         user = self._get_user_by_id(user_id)
@@ -81,11 +84,14 @@ class ChatService(object):
         if not user or not group:
             socket.send(serialize({'type': 'error', 'message': 'Invalid group or user ID'}))
 
-        group.remove_user(user)
+        # This will be False if the user wasn't in the group to begin with
+        removed = group.remove_user(user)
 
-        self.user_group_map[user.id].pop(group)
-
-        app.logger.info(u'Removed user {} from group {} '.format(user_id, group_id))
+        if removed:
+            self.user_group_map[user.id].remove(group)
+            app.logger.info(u'Removed user {} from group {}'.format(user_id, group_id))
+        else:
+            app.logger.info(u'Tried to remove user {} from group {}, but they werent even in there xD'.format(user_id, group_id))
 
     def send_message(self, user_id, group_id, message, socket):
         self._clean_dead_users()
@@ -99,6 +105,8 @@ class ChatService(object):
 
         app.logger.info(u'User {} sent {} to group {} '.format(user_id, message, group_id))
         group.broadcast(user, message)
+
+        app.logger.info(u'User {} messaged {} to group {}'.format(user_id, message, group_id))
 
     def flush_data(self, user_id, socket):
         self.users = []
