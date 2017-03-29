@@ -17,7 +17,7 @@
         android:text="Status: "/>
 
     <TextView
-        android:id="@+id/groupID"
+        android:id="@+id/currentGroupID"
         android:layout_width="wrap_content"
         android:layout_height="30dp"
         android:text="Group ID is: " />
