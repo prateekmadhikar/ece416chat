@@ -15,7 +15,7 @@ sockets = Sockets(app)
 class ChatService(object):
 
     def __init__(self):
-        self.groups = [Group('Group {}'.format(i), None) for i in range(5)]
+        self.groups = [Group('Group {}'.format(i)) for i in range(5)]
         self.users = []
         self.user_group_map = {}
 
@@ -62,7 +62,7 @@ class ChatService(object):
             socket.send(serialize({'type': 'error', 'message': 'Invalid user ID'}))
 
         if not group:
-            group = Group(group_id, user)
+            group = Group(group_id)
             self.groups.append(group)
         else:
             group.add_user(user)
