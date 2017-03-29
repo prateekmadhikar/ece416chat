@@ -36,7 +36,7 @@ public final class MessageManager implements Serializable {
 
     static MessageManager self = null;
 
-    // TODO Need to initialize our singleton via Setters
+    //NOTE Need to initialize our singleton via Setters
     static MessageManager GetInstance() {
         if (self == null) {
             self = new MessageManager();
@@ -46,14 +46,11 @@ public final class MessageManager implements Serializable {
 
     private MessageManager()
     {
-//      TODO Need to initialize our singleton via Setters
         mActivity = null;
         ConnectWebSocket();
         this.userID = "";
         this.currentGroupID = "";
         StartStatusThread();
-
-
     }
 
     //Getters and Setters
@@ -141,7 +138,7 @@ public final class MessageManager implements Serializable {
             case "error":
                 Log.i("Websocket", "Error from server ");
                 break;
-            default :
+            default:
                 Log.i("Websocket", "Ack received");
         }
     }
@@ -151,7 +148,7 @@ public final class MessageManager implements Serializable {
         try {
             request.put("action", "register");
             request.put("user_id", userID);
-            mWebSocketClient.send(request.toString().getBytes(StandardCharsets.UTF_8));
+            SendJSON(request);
             Log.i("Websocket", "Registering user " + userID);
         } catch (JSONException e) {
             Log.d("Exceptions", "JSON Error " + e);
@@ -223,7 +220,7 @@ public final class MessageManager implements Serializable {
             request.put("action", "list_group_users");
             request.put("user_id", userID);
             request.put("group_id", currentGroupID);
-            mWebSocketClient.send(request.toString().getBytes(StandardCharsets.UTF_8));
+            SendJSON(request);
         } catch (JSONException e) {
             Log.d("Exceptions", "JSON Error " + e);
         }
@@ -236,7 +233,7 @@ public final class MessageManager implements Serializable {
             request.put("action", "leave_group");
             request.put("user_id", userID);
             request.put("group_id", currentGroupID);
-            mWebSocketClient.send(request.toString().getBytes(StandardCharsets.UTF_8));
+            SendJSON(request);
         } catch (JSONException e) {
             Log.d("Exceptions", "JSON Error " + e);
         }
