@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.TextView;
 
 import java.io.Serializable;
 
@@ -20,7 +21,7 @@ public class ChatActivity extends AppCompatActivity implements Serializable {
 
         MessageManager.GetInstance().SetActivity(this);
         MessageManager.GetInstance().SetCheckStatus(true);
-
+        MessageManager.GetInstance().SetShowMessage(true);
 
         Intent intent = this.getIntent();
         Bundle bundle = intent.getExtras();
@@ -33,6 +34,9 @@ public class ChatActivity extends AppCompatActivity implements Serializable {
                 groupID = (String) bundle.getSerializable("currentGroupID");
             }
         }
+        MessageManager.GetInstance().CheckStatus();
+        SetGroupIDText();
+        MessageManager.GetInstance().UpdateMessageUI();
     }
 
     @Override
@@ -40,12 +44,23 @@ public class ChatActivity extends AppCompatActivity implements Serializable {
         super.onResume();  // Always call the superclass method first
         MessageManager.GetInstance().SetActivity(this);
         MessageManager.GetInstance().SetCheckStatus(true);
+        MessageManager.GetInstance().SetShowMessage(true);
+        SetGroupIDText();
+        MessageManager.GetInstance().UpdateMessageUI();
     }
 
     @Override
     public void onPause() {
         super.onPause();  // Always call the superclass method first
         MessageManager.GetInstance().SetCheckStatus(false);
+        MessageManager.GetInstance().SetShowMessage(false);
+
+    }
+
+    public void SetGroupIDText()
+    {
+        TextView groupText = (TextView) findViewById(R.id.currentGroupID);
+        groupText.setText("Group ID is: " + MessageManager.GetInstance().GetGroupID());
     }
 
     public void showGroup(View view) {
