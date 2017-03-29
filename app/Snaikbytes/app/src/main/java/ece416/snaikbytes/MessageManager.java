@@ -6,49 +6,78 @@ import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
 
+import org.java_websocket.WebSocket;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.BufferedInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.io.Serializable;
-import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Vector;
 
 /**
  * Created by mcoppola on 24/03/17.
  */
 
-public class MessageManager implements Serializable {
+public final class MessageManager implements Serializable {
 
     //Activity is used to allow threads to write to the UI
-    Activity mActivity;
-    WebSocketClient mWebSocketClient;
-    String userID;
-    String groupID;
+    static Activity mActivity;
+    static WebSocketClient mWebSocketClient;
+    static String userID;
+    static String currentGroupID;
+    static Vector<String> mActiveGroups;
+    static boolean mShowStatus;
 
-    public MessageManager(Activity activity, String userID, String groupID)
-    {
-        mActivity = activity;
-        ConnectWebSocket();
-        this.userID = userID;
-        this.groupID = groupID;
-        //StartStatusThread();
+    static MessageManager self = null;
+
+    // TODO Need to initialize our singleton via Setters
+    static MessageManager GetInstance() {
+        if (self == null) {
+            self = new MessageManager();
+        }
+        return self;
     }
+
+    private MessageManager()
+    {
+//      TODO Need to initialize our singleton via Setters
+        mActivity = null;
+        ConnectWebSocket();
+        this.userID = "";
+        this.currentGroupID = "";
+        StartStatusThread();
+
+
+    }
+
+    //Getters and Setters
+    public static void SetActivity(Activity act) {
+        mActivity = act;
+    }
+
+    public  static void SetUserId(String id) {
+        userID = id;
+    }
+
+    public  static void SetGroupId(String id) {
+        currentGroupID = id;
+    }
+
+    public  static void SetCheckStatus(Boolean checkStatus) {
+        mShowStatus = checkStatus;
+    }
+
 
     private void ConnectWebSocket() {
         URI uri;
         try {
-            uri = new URI("ws://ece416chat.herokuapp.com/"); //could try :5000
+            uri = new URI("ws://ece416chat.herokuapp.com/");
         } catch (URISyntaxException e) {
             e.printStackTrace();
             return;
@@ -58,19 +87,18 @@ public class MessageManager implements Serializable {
             @Override
             public void onOpen(ServerHandshake serverHandshake) {
                 Log.i("Websocket", "Opened");
-                //TODO handle
-                Register();
-
                 if (mActivity.toString().contains("MainActivity")) {
                     GetGroupList();
                 }
+                UpdateUIText("Status Up", R.id.statusText);
+                Register();
             }
 
             @Override
             public void onMessage(String s) {
                 final String message = s;
                 Log.i("Websocket", "Message Recieved " + s);
-                //TODO Implement
+
                 try {
                     ParseJSon(message);
                 } catch (JSONException e) {
@@ -81,6 +109,7 @@ public class MessageManager implements Serializable {
             @Override
             public void onClose(int i, String s, boolean b) {
                 Log.i("Websocket", "Closed " + s);
+                UpdateUIText("Status Down", R.id.statusText);
             }
 
             @Override
@@ -117,14 +146,48 @@ public class MessageManager implements Serializable {
         }
     }
 
-    public void Register()
-    {
+    private void Register() {
         JSONObject request = new JSONObject();
         try {
             request.put("action", "register");
             request.put("user_id", userID);
             mWebSocketClient.send(request.toString().getBytes(StandardCharsets.UTF_8));
-            Log.d("Websocket", "Registered");
+            Log.i("Websocket", "Registering user " + userID);
+        } catch (JSONException e) {
+            Log.d("Exceptions", "JSON Error " + e);
+        }
+    }
+
+    private void SendJSON(JSONObject json)
+    {
+        if (mWebSocketClient.getReadyState() == WebSocket.READYSTATE.OPEN) {
+            mWebSocketClient.send(json.toString().getBytes(StandardCharsets.UTF_8));
+        } else {
+            //TODO implement message buffering
+        }
+    }
+
+    public void JoinGroup() {
+        JSONObject jsonMessage = new JSONObject();
+        try {
+            jsonMessage.put("action", "join_group");
+            jsonMessage.put("user_id", userID);
+            jsonMessage.put("group_id", currentGroupID);
+            SendJSON(jsonMessage);
+        } catch (JSONException e) {
+            Log.d("Exceptions", "JSON Error " + e);
+        }
+    }
+
+    public void SendMessage(String message)
+    {
+        JSONObject jsonMessage = new JSONObject();
+        try {
+            jsonMessage.put("action", "message");
+            jsonMessage.put("user_id", userID);
+            jsonMessage.put("group_id", currentGroupID);
+            jsonMessage.put("message", message);
+            SendJSON(jsonMessage);
         } catch (JSONException e) {
             Log.d("Exceptions", "JSON Error " + e);
         }
@@ -135,7 +198,19 @@ public class MessageManager implements Serializable {
         JSONObject request = new JSONObject();
         try {
             request.put("action", "list_groups");
-            mWebSocketClient.send(request.toString().getBytes(StandardCharsets.UTF_8));
+            SendJSON(request);
+        } catch (JSONException e) {
+            Log.d("Exceptions", "JSON Error " + e);
+        }
+    }
+
+    public void GetGroupInfo()
+    {
+        JSONObject request = new JSONObject();
+        try {
+            request.put("action", "list_group_users");
+            request.put("group_id", currentGroupID);
+            SendJSON(request);
         } catch (JSONException e) {
             Log.d("Exceptions", "JSON Error " + e);
         }
@@ -147,20 +222,7 @@ public class MessageManager implements Serializable {
         try {
             request.put("action", "list_group_users");
             request.put("user_id", userID);
-            request.put("group_id", groupID);
-            mWebSocketClient.send(request.toString().getBytes(StandardCharsets.UTF_8));
-        } catch (JSONException e) {
-            Log.d("Exceptions", "JSON Error " + e);
-        }
-    }
-
-    public void JoinGroup()
-    {
-        JSONObject request = new JSONObject();
-        try {
-            request.put("action", "join_group");
-            request.put("user_id", userID);
-            request.put("group_id", groupID);
+            request.put("group_id", currentGroupID);
             mWebSocketClient.send(request.toString().getBytes(StandardCharsets.UTF_8));
         } catch (JSONException e) {
             Log.d("Exceptions", "JSON Error " + e);
@@ -173,7 +235,7 @@ public class MessageManager implements Serializable {
         try {
             request.put("action", "leave_group");
             request.put("user_id", userID);
-            request.put("group_id", groupID);
+            request.put("group_id", currentGroupID);
             mWebSocketClient.send(request.toString().getBytes(StandardCharsets.UTF_8));
         } catch (JSONException e) {
             Log.d("Exceptions", "JSON Error " + e);
@@ -264,58 +326,28 @@ public class MessageManager implements Serializable {
         }).start();
     }
 
-    private String ReadStream(InputStream stream)
-    {
-        try {
-            ByteArrayOutputStream outputBytes = new ByteArrayOutputStream();
-            int dataByte = stream.read();
-            while(dataByte != -1) {
-                outputBytes.write(dataByte);
-                dataByte = stream.read();
-            }
-            return outputBytes.toString();
-        } catch (IOException e) {
-            return "";
-        }
-    }
-
     private void StatusTask()
     {
-        URL url;
         try {
-            url = new URL("https://ece416chat.herokuapp.com/status");
-        } catch(Exception e) {
-            Log.d("Exceptions", "Error Malformed URL " + e);
-            return;
+            Thread.sleep(1000);
+        } catch (Exception e) {
+            Log.d("Exceptions", "Thread Interrupt Exception, not sleeping " + e);
         }
 
         while(true)
         {
-            String response = "";
-
-            try {
-                HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
-                try {
-                    InputStream in = new BufferedInputStream(urlConnection.getInputStream());
-                    response = ReadStream(in);
-                } catch (Exception e) {
-                    Log.d("Exceptions", "Error Reading Server Response " + e);
-                } finally {
-                    urlConnection.disconnect();
+            Log.i("Websocket", "Socket State " + mWebSocketClient.getReadyState());
+            if (mShowStatus) {
+                if (mWebSocketClient.getReadyState().equals(WebSocket.READYSTATE.OPEN)) {
+                    UpdateUIText("Status Up", R.id.statusText);
+                } else {
+                    UpdateUIText("Status Down", R.id.statusText);
+                    ConnectWebSocket();
                 }
-            } catch (Exception e) {
-                Log.d("Exceptions", "Error Initiating Connection with Server " + e);
-            }
-
-            if (response.equals("Success"))
-            {
-                UpdateUIText("Status Up", R.id.statusText);
-            } else {
-                UpdateUIText("Status Down", R.id.statusText);
             }
 
             try {
-                Thread.sleep(4500);
+                Thread.sleep(5000);
             } catch (Exception e) {
                 Log.d("Exceptions", "Thread Interrupt Exception, not sleeping " + e);
             }

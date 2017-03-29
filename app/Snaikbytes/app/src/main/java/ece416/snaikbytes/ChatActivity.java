@@ -4,12 +4,12 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
+import android.widget.EditText;
 
 import java.io.Serializable;
 
 public class ChatActivity extends AppCompatActivity implements Serializable {
 
-    MessageManager mMessageManager;
     String groupID;
     String userID;
 
@@ -18,6 +18,10 @@ public class ChatActivity extends AppCompatActivity implements Serializable {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_chat);
 
+        MessageManager.GetInstance().SetActivity(this);
+        MessageManager.GetInstance().SetCheckStatus(true);
+
+
         Intent intent = this.getIntent();
         Bundle bundle = intent.getExtras();
 
@@ -25,28 +29,41 @@ public class ChatActivity extends AppCompatActivity implements Serializable {
             if (bundle.containsKey("userID")) {
                 userID = (String) bundle.getSerializable("userID");
             }
-            if (bundle.containsKey("groupID")) {
-                groupID = (String) bundle.getSerializable("groupID");
+            if (bundle.containsKey("currentGroupID")) {
+                groupID = (String) bundle.getSerializable("currentGroupID");
             }
         }
+    }
 
-        mMessageManager = new MessageManager(this, userID, groupID);
+    @Override
+    public void onResume() {
+        super.onResume();  // Always call the superclass method first
+        MessageManager.GetInstance().SetActivity(this);
+        MessageManager.GetInstance().SetCheckStatus(true);
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();  // Always call the superclass method first
+        MessageManager.GetInstance().SetCheckStatus(false);
     }
 
     public void showGroup(View view) {
-        mMessageManager.GetGroupUsers();
+        MessageManager.GetInstance().GetGroupUsers();
     }
 
     public void joinGroup(View view) {
-        mMessageManager.JoinGroup();
+        MessageManager.GetInstance().JoinGroup();
     }
 
     public void quitGroup(View view) {
-        mMessageManager.LeaveGroup();
+        MessageManager.GetInstance().LeaveGroup();
     }
 
     public void sendMessage(View view) {
-        // TODO: Send the message
+        EditText messageText = ((EditText) findViewById(R.id.newMessage));
+        MessageManager.GetInstance().SendMessage(messageText.getText().toString());
+        messageText.setText("");
     }
 
 

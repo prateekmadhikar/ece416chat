@@ -90,8 +90,10 @@ class ChatService(object):
         group = self._get_group_by_id(group_id)
 
         if not user or not group:
+            app.logger.info(u'User {} not in group {} '.format(user_id, group_id))
             socket.send(serialize({'type': 'error', 'message': 'Invalid group or user ID'}))
 
+        app.logger.info(u'User {} sent {} to group {} '.format(user_id, message, group_id))
         group.broadcast(user, message)
 
     def flush_data(self, user_id, socket):

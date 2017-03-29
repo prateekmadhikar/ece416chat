@@ -11,7 +11,6 @@ import java.io.Serializable;
 
 public class MainActivity extends AppCompatActivity implements Serializable {
 
-    MessageManager mMessageManager;
     String userID;
     ListView lv;
 
@@ -29,7 +28,9 @@ public class MainActivity extends AppCompatActivity implements Serializable {
             }
         }
 
-        mMessageManager = new MessageManager(this, userID, null);
+        MessageManager.GetInstance().SetActivity(this);
+        MessageManager.GetInstance().SetUserId(userID);
+        MessageManager.GetInstance().SetCheckStatus(true);
 
         lv = (ListView) this.findViewById(R.id.listOfGroups);
 
@@ -38,9 +39,22 @@ public class MainActivity extends AppCompatActivity implements Serializable {
             public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
                 Object o = lv.getItemAtPosition(i);
                 String groupID = o.toString();
+                MessageManager.GetInstance().SetGroupId(groupID);
                 startChatActivity(groupID);
             }
         });
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();  // Always call the superclass method first
+        MessageManager.GetInstance().SetActivity(this);
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();  // Always call the superclass method first
+        MessageManager.GetInstance().SetCheckStatus(false);
     }
 
     public void startChatActivity(String groupID) {
@@ -51,7 +65,7 @@ public class MainActivity extends AppCompatActivity implements Serializable {
         bundle.putSerializable("userID", userID);
         intent.putExtras(bundle);
 
-        bundle.putSerializable("groupID", groupID);
+        bundle.putSerializable("currentGroupID", groupID);
         intent.putExtras(bundle);
 
         startActivity(intent);
