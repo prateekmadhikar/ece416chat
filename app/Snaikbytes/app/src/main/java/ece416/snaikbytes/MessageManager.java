@@ -40,6 +40,7 @@ public final class MessageManager implements Serializable {
     static  boolean mShowMessages;
     ArrayBlockingQueue<JSONObject> mMessageQueue;
     ArrayMap<String, ChatGroup> mGroupChats;
+    boolean mMessageWaitingAck;
 
     static MessageManager self = null;
 
@@ -59,6 +60,7 @@ public final class MessageManager implements Serializable {
         this.currentGroupID = "";
         mMessageQueue = new ArrayBlockingQueue<JSONObject>(100);
         mGroupChats = new ArrayMap<>();
+        mMessageWaitingAck = false;
         StartStatusThread();
     }
 
@@ -166,9 +168,27 @@ public final class MessageManager implements Serializable {
                 break;
             case "error":
                 Log.i("Websocket", "Error from server ");
+                UpdateMessageStatus(type);
                 break;
             default:
                 Log.i("Websocket", "Ack received");
+                UpdateMessageStatus(type);
+        }
+    }
+
+    private void UpdateMessageStatus(String type)
+    {
+        if(mShowMessages && mMessageWaitingAck)
+        {
+            mMessageWaitingAck = false;
+            String status = "Failure";
+            if(type.equals("ack"))
+            {
+                status = "Success";
+                UpdateMessageUI();
+            }
+            TextView messageStatusText = (TextView) mActivity.findViewById(R.id.messageStatusText);
+            messageStatusText.setText("Message Status: " + status);
         }
     }
 
@@ -350,9 +370,8 @@ public final class MessageManager implements Serializable {
             jsonMessage.put("group_id", currentGroupID);
             jsonMessage.put("message", message);
             SendJSON(jsonMessage);
-
             AddToChatMap(currentGroupID, userID, message);
-            UpdateMessageUI();
+            mMessageWaitingAck = true;
         } catch (JSONException e) {
             Log.d("Exceptions", "JSON Error " + e);
         }
