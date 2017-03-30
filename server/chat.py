@@ -114,23 +114,7 @@ class ChatService(object):
         app.logger.info(u'Flushed chat users and groups')
 
     def _clean_dead_users(self):
-        old_len = len(self.users)
-
-        active_users = [u for u in self.users if u.is_alive]
-        dead_users = [u for u in self.users if u not in active_users]
-        self.users = active_users
-
-        # Remove the dead users from the groups they're in
-        for u in dead_users:
-            if u.id in self.user_group_map:
-                if self.user_group_map[u.id]:
-                    for group in self.user_group_map[u.id]:
-                        self._get_group_by_id(group.id).remove_user(u)
-
-                self.user_group_map.pop(u.id)
-
-        if dead_users:
-            app.logger.info(u'Cleaned up {} dead connections'.format(len(dead_users)))
+        return 
 
     def _get_group_by_id(self, group_id):
         for g in self.groups:
