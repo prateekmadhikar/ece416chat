@@ -2,6 +2,7 @@ package ece416.snaikbytes;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.DialogInterface;
 import android.util.ArrayMap;
 import android.util.Log;
@@ -20,7 +21,6 @@ import java.io.Serializable;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
-import java.util.AbstractQueue;
 import java.util.ArrayList;
 import java.util.Vector;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -191,10 +191,10 @@ public final class MessageManager implements Serializable {
 
         switch(type) {
             case "list_groups":
-                UpdateGroups(data);
+                UpdateGroups(jsonData);
                 break;
             case "list_group_users":
-                ListUsers();
+                ListUsers(jsonData);
                 break;
             case "message":
                 AlertNewMessage(jsonData);
@@ -244,6 +244,7 @@ public final class MessageManager implements Serializable {
             jsonMessage.put("group_id", group);
             SendJSON(jsonMessage);
             AddToActiveGroups(group);
+            ShowAlert("Group joined.");
         } catch (JSONException e) {
             Log.d("Exceptions", "JSON Error " + e);
         }
@@ -262,6 +263,8 @@ public final class MessageManager implements Serializable {
         }
 
         RemoveFromActiveGroups(currentGroupID);
+
+        ShowAlert("Group left.");
 
         if(mGroupChats.containsKey(currentGroupID))
         {
@@ -358,14 +361,40 @@ public final class MessageManager implements Serializable {
         mActivity.runOnUiThread(new threadStatusMessenger(user, group, message, mActivity));
     }
 
-    public void UpdateGroups(String data)
+    private void ShowAlert(String message)
     {
         class threadStatusMessenger implements Runnable {
-            String data;
+            Activity mActivity;
+            String mMsg;
+
+            threadStatusMessenger(String msg, Activity activity) {
+                mActivity = activity;
+                mMsg = msg;
+            }
+
+            public void run() {
+                AlertDialog alertDialog = new AlertDialog.Builder(mActivity).create();
+                alertDialog.setMessage(mMsg);
+                alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "OK",
+                        new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog, int which) {
+                                dialog.dismiss();
+                            }
+                        });
+                alertDialog.show();
+            }
+        }
+        mActivity.runOnUiThread(new threadStatusMessenger(message, mActivity));
+    }
+
+    public void UpdateGroups(JSONObject jsonData)
+    {
+        class threadStatusMessenger implements Runnable {
+            JSONObject jsonData;
             Activity mActivity;
 
-            threadStatusMessenger(String data, Activity activity) {
-                this.data = data;
+            threadStatusMessenger(JSONObject jsonData, Activity activity) {
+                this.jsonData = jsonData;
                 this.mActivity = activity;
             }
 
@@ -373,7 +402,6 @@ public final class MessageManager implements Serializable {
                 ArrayList<String> groups = new ArrayList<String>();
 
                 try {
-                    JSONObject jsonData = new JSONObject(data);
                     JSONArray jsonGroups = jsonData.getJSONArray("groups");
 
                     for (int i = 0; i < jsonGroups.length(); i++) {
@@ -395,12 +423,53 @@ public final class MessageManager implements Serializable {
             }
         }
 
-        mActivity.runOnUiThread(new threadStatusMessenger(data, mActivity));
+        mActivity.runOnUiThread(new threadStatusMessenger(jsonData, mActivity));
     }
 
-    public void ListUsers()
+    public void ListUsers(JSONObject jsonData)
     {
-        // TODO: Parse and display users
+        class threadStatusMessenger implements Runnable {
+            JSONObject jsonData;
+            Activity mActivity;
+
+            threadStatusMessenger(JSONObject jsonData, Activity activity) {
+                this.jsonData = jsonData;
+                this.mActivity = activity;
+            }
+
+            public void run() {
+                ArrayList<String> users = new ArrayList<String>();
+
+                try {
+                    JSONArray jsonUsers = jsonData.getJSONArray("users");
+
+                    for (int i = 0; i < jsonUsers.length(); i++) {
+                        JSONObject jsonUser = jsonUsers.getJSONObject(i);
+                        String userId = jsonUser.getString("user_id");
+                        users.add(userId);
+                    }
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+
+                if (users.isEmpty())
+                    users.add("No users");
+
+                Dialog dialog = new Dialog(mActivity);
+                dialog.setContentView(R.layout.list);
+                ArrayAdapter<String> arrayAdapter = new ArrayAdapter<String>(
+                        mActivity,
+                        android.R.layout.simple_list_item_1,
+                        users );
+
+                ListView lv = (ListView) dialog.findViewById(R.id.list);
+                lv.setAdapter(arrayAdapter);
+                dialog.setCancelable(true);
+                dialog.show();
+            }
+        }
+
+        mActivity.runOnUiThread(new threadStatusMessenger(jsonData, mActivity));
     }
 
     private void AddToChatMap(String group, String user, String message)

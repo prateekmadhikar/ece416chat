@@ -34,9 +34,11 @@ public class ChatActivity extends AppCompatActivity implements Serializable {
                 groupID = (String) bundle.getSerializable("currentGroupID");
             }
         }
+
         MessageManager.GetInstance().CheckStatus();
         SetGroupIDText();
         MessageManager.GetInstance().UpdateMessageUI();
+        MessageManager.GetInstance().JoinGroup(MessageManager.GetInstance().GetGroupID());
     }
 
     @Override
