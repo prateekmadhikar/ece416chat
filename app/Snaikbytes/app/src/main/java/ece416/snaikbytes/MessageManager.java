@@ -508,7 +508,7 @@ public final class MessageManager implements Serializable {
 
         while(true)
         {
-            Log.i("Websocket", "Socket State " + mWebSocketClient.getReadyState());
+            Log.i("Status", "Socket State " + mWebSocketClient.getReadyState());
             if (mShowStatus) {
                 if (mWebSocketClient.getReadyState().equals(WebSocket.READYSTATE.OPEN)) {
                     UpdateUIText("Status Up", R.id.statusText);
