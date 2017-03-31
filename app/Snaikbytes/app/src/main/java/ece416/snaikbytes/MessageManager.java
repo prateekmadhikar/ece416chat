@@ -38,9 +38,10 @@ public final class MessageManager implements Serializable {
     static String currentGroupID;
     static boolean mShowStatus;
     static  boolean mShowMessages;
-    ArrayBlockingQueue<JSONObject> mMessageQueue;
-    ArrayMap<String, ChatGroup> mGroupChats;
-    boolean mMessageWaitingAck;
+    static ArrayBlockingQueue<JSONObject> mMessageQueue;
+    static ArrayMap<String, ChatGroup> mGroupChats;
+    static boolean mMessageWaitingAck;
+    static Vector<String> mActiveGroups;
 
     static MessageManager self = null;
 
@@ -60,6 +61,7 @@ public final class MessageManager implements Serializable {
         this.currentGroupID = "";
         mMessageQueue = new ArrayBlockingQueue<JSONObject>(100);
         mGroupChats = new ArrayMap<>();
+        mActiveGroups = new Vector<String>();
         mMessageWaitingAck = false;
         StartStatusThread();
     }
@@ -90,6 +92,36 @@ public final class MessageManager implements Serializable {
         mShowMessages = show;
     }
 
+    private void AddToActiveGroups(String group)
+    {
+        for (String x : mActiveGroups) {
+            if (x.equals(group))
+            {
+                return;
+            }
+        }
+        mActiveGroups.add(group);
+    }
+
+    private void RemoveFromActiveGroups(String group)
+    {
+        int index = 0;
+        for (String x : mActiveGroups) {
+            if(x.equals(group))
+            {
+                mActiveGroups.remove(index);
+                return;
+            }
+            index++;
+        }
+    }
+
+    private void JoinActiveGroups()
+    {
+        for (String group : mActiveGroups) {
+            JoinGroup(group);
+        }
+    }
 
     private void ConnectWebSocket() {
         URI uri;
@@ -109,6 +141,7 @@ public final class MessageManager implements Serializable {
                 }
                 UpdateUIText("Status Up", R.id.statusText);
                 Register();
+                JoinActiveGroups();
                 FlushMessageQueue();
             }
 
@@ -187,8 +220,7 @@ public final class MessageManager implements Serializable {
                 status = "Success";
                 UpdateMessageUI();
             }
-            TextView messageStatusText = (TextView) mActivity.findViewById(R.id.messageStatusText);
-            messageStatusText.setText("Message Status: " + status);
+            UpdateUIText("Message Status: " + status, R.id.messageStatusText);
         }
     }
 
@@ -204,13 +236,14 @@ public final class MessageManager implements Serializable {
         }
     }
 
-    public void JoinGroup() {
+    public void JoinGroup(String group) {
         JSONObject jsonMessage = new JSONObject();
         try {
             jsonMessage.put("action", "join_group");
             jsonMessage.put("user_id", userID);
-            jsonMessage.put("group_id", currentGroupID);
+            jsonMessage.put("group_id", group);
             SendJSON(jsonMessage);
+            AddToActiveGroups(group);
         } catch (JSONException e) {
             Log.d("Exceptions", "JSON Error " + e);
         }
@@ -227,6 +260,8 @@ public final class MessageManager implements Serializable {
         } catch (JSONException e) {
             Log.d("Exceptions", "JSON Error " + e);
         }
+
+        RemoveFromActiveGroups(currentGroupID);
 
         if(mGroupChats.containsKey(currentGroupID))
         {
@@ -255,24 +290,11 @@ public final class MessageManager implements Serializable {
         }
     }
 
-    public void GetGroupInfo()
-    {
-        JSONObject request = new JSONObject();
-        try {
-            request.put("action", "list_group_users");
-            request.put("group_id", currentGroupID);
-            SendJSON(request);
-        } catch (JSONException e) {
-            Log.d("Exceptions", "JSON Error " + e);
-        }
-    }
-
     public void GetGroupUsers()
     {
         JSONObject request = new JSONObject();
         try {
             request.put("action", "list_group_users");
-            request.put("user_id", userID);
             request.put("group_id", currentGroupID);
             SendJSON(request);
         } catch (JSONException e) {
@@ -303,6 +325,37 @@ public final class MessageManager implements Serializable {
             }
         }
         mActivity.runOnUiThread(new threadStatusMessenger(msg, mActivity, viewId));
+    }
+
+    private void ShowNotification(String user, String group, String message)
+    {
+        class threadStatusMessenger implements Runnable {
+            Activity mActivity;
+            String mUser;
+            String mGroup;
+            String mMsg;
+
+            threadStatusMessenger(String user, String msg, String group, Activity activity) {
+                mActivity = activity;
+                mUser = user;
+                mGroup = group;
+                mMsg = msg;
+            }
+
+            public void run() {
+                AlertDialog alertDialog = new AlertDialog.Builder(mActivity).create();
+                alertDialog.setTitle(mUser + " message group " + mGroup);
+                alertDialog.setMessage(mUser + ": " + mMsg);
+                alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "OK",
+                        new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog, int which) {
+                                dialog.dismiss();
+                            }
+                        });
+                alertDialog.show();
+            }
+        }
+        mActivity.runOnUiThread(new threadStatusMessenger(user, group, message, mActivity));
     }
 
     public void UpdateGroups(String data)
@@ -385,7 +438,10 @@ public final class MessageManager implements Serializable {
             String message = json.getString("message");
 
             AddToChatMap(group, user, message);
-            ShowNotification(user, group, message);
+
+            if(!currentGroupID.equals(group)) {
+                ShowNotification(user, group, message);
+            }
 
             if(currentGroupID.equals(group) && mShowMessages)
             {
@@ -397,23 +453,8 @@ public final class MessageManager implements Serializable {
         }
     }
 
-    private void ShowNotification(String user, String group, String message)
-    {
-        AlertDialog alertDialog = new AlertDialog.Builder(mActivity).create();
-        alertDialog.setTitle(user + " message group " + group);
-        alertDialog.setMessage(user + ": " + message);
-        alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "OK",
-                new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int which) {
-                        dialog.dismiss();
-                    }
-                });
-        alertDialog.show();
-    }
-
     public  void UpdateMessageUI()
     {
-        TextView messageView = (TextView) mActivity.findViewById(R.id.message);
         String messageString = "";
         if (mGroupChats.containsKey(currentGroupID)) {
             Vector<Message> messages = mGroupChats.get(currentGroupID).GetMessages();
@@ -421,7 +462,7 @@ public final class MessageManager implements Serializable {
                 messageString += msg.GetUser() + ": " + msg.GetMessage() + "\n\n";
             }
         }
-        messageView.setText(messageString);
+        UpdateUIText(messageString, R.id.message);
     }
 
     private void StartStatusThread()

@@ -68,7 +68,7 @@ public class ChatActivity extends AppCompatActivity implements Serializable {
     }
 
     public void joinGroup(View view) {
-        MessageManager.GetInstance().JoinGroup();
+        MessageManager.GetInstance().JoinGroup(MessageManager.GetInstance().GetGroupID());
     }
 
     public void quitGroup(View view) {
