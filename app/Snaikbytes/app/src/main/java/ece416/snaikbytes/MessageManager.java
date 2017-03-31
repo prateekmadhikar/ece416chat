@@ -335,7 +335,7 @@ public final class MessageManager implements Serializable {
             String mGroup;
             String mMsg;
 
-            threadStatusMessenger(String user, String msg, String group, Activity activity) {
+            threadStatusMessenger(String user, String group, String msg, Activity activity) {
                 mActivity = activity;
                 mUser = user;
                 mGroup = group;
@@ -344,7 +344,7 @@ public final class MessageManager implements Serializable {
 
             public void run() {
                 AlertDialog alertDialog = new AlertDialog.Builder(mActivity).create();
-                alertDialog.setTitle(mUser + " message group " + mGroup);
+                alertDialog.setTitle(mUser + " messaged group " + mGroup);
                 alertDialog.setMessage(mUser + ": " + mMsg);
                 alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "OK",
                         new DialogInterface.OnClickListener() {
