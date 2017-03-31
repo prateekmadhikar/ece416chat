@@ -171,6 +171,8 @@ def socket_in_handler(ws):
         if action == 'register':
             chat.register_user(json_dict.get('user_id'), ws)
             _send_ack(ws)
+        elif action == 'keep_alive':
+            _send_ack(ws)
         elif action == 'list_groups':
             chat.list_groups(ws)
         elif action == 'list_group_users':
