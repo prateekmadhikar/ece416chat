@@ -131,6 +131,8 @@ class ChatService(object):
 
         if dead_users:
             app.logger.info(u'Cleaned up {} dead connections'.format(len(dead_users)))
+            for u in dead_users:
+               app.logger.info(u'Cleaned up {}'.format(u.id))
 
     def _get_group_by_id(self, group_id):
         for g in self.groups:
