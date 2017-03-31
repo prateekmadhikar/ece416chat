@@ -114,6 +114,7 @@ class ChatService(object):
         app.logger.info(u'Flushed chat users and groups')
 
     def _clean_dead_users(self):
+        return
         old_len = len(self.users)
 
         active_users = [u for u in self.users if u.is_alive]
