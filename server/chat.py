@@ -96,15 +96,10 @@ class ChatService(object):
     def send_message(self, user_id, group_id, message, socket):
         self._clean_dead_users()
 
-        user = self._get_user_by_id(user_id)
-        group = self._get_group_by_id(group_id)
+        user, group = self._rebuild_user_from_message(user_id, group_id, socket)
 
-        if not user or not group:
-            app.logger.info(u'User {} not in group {} '.format(user_id, group_id))
-            socket.send(serialize({'type': 'error', 'message': 'Invalid group or user ID'}))
-        else:
-            group.broadcast(user, message)
-            app.logger.info(u'User {} messaged {} to group {}'.format(user_id, message, group_id))
+        group.broadcast(user, message)
+        app.logger.info(u'User {} messaged {} to group {}'.format(user_id, message, group_id))
 
     def flush_data(self, user_id, socket):
         self.users = []
@@ -112,6 +107,27 @@ class ChatService(object):
         self.user_group_map = {}
 
         app.logger.info(u'Flushed chat users and groups')
+
+    def _rebuild_user_from_message(self, user_id, group_id, socket):
+        user = self._get_user_by_id(user_id)
+        group = self._get_group_by_id(group_id)
+
+        user_recreated = False
+        if not user:
+            user_recreated = True
+            user = User(user_id, socket)
+            self.users.append(user)
+            app.logger.info(u'Recreated user with id {} from message'.format(user_id))
+
+        if not group:
+            group = Group(group_id)
+            group.add_user(user)
+            app.logger.info(u'Recreated group with id {} with user with id {} from message'.format(group_id, user_id))
+        elif user_recreated:
+            group.add_user(user)
+            app.logger.info(u'Added user with id {} back to group with id {} from message'.format(user_id, group_id))
+
+        return user, group
 
     def _clean_dead_users(self):
         old_len = len(self.users)
@@ -170,6 +186,7 @@ def socket_in_handler(ws):
         json_dict = deserialize(message)
         action = json_dict.get('action')
 
+        import ipdb; ipdb.set_trace()
         if action == 'register':
             chat.register_user(json_dict.get('user_id'), ws)
             _send_ack(ws)
@@ -199,9 +216,9 @@ def _send_ack(socket):
     socket.send(serialize({'type': 'ack'}))
 
 # Uncomment the following to run locally and run 'python chat.py' from the root folder
-# if __name__ == "__main__":
-#     from gevent import pywsgi
-#     from geventwebsocket.handler import WebSocketHandler
-#     server = pywsgi.WSGIServer(('', 5000), app, handler_class=WebSocketHandler)
-#     server.serve_forever()
+if __name__ == "__main__":
+    from gevent import pywsgi
+    from geventwebsocket.handler import WebSocketHandler
+    server = pywsgi.WSGIServer(('', 5000), app, handler_class=WebSocketHandler)
+    server.serve_forever()
 
