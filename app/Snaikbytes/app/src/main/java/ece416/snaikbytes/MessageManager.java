@@ -1,6 +1,9 @@
 package ece416.snaikbytes;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
+import android.util.ArrayMap;
 import android.util.Log;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
@@ -17,8 +20,10 @@ import java.io.Serializable;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
+import java.util.AbstractQueue;
 import java.util.ArrayList;
 import java.util.Vector;
+import java.util.concurrent.ArrayBlockingQueue;
 
 /**
  * Created by mcoppola on 24/03/17.
@@ -31,12 +36,16 @@ public final class MessageManager implements Serializable {
     static WebSocketClient mWebSocketClient;
     static String userID;
     static String currentGroupID;
-    static Vector<String> mActiveGroups;
     static boolean mShowStatus;
+    static  boolean mShowMessages;
+    static ArrayBlockingQueue<JSONObject> mMessageQueue;
+    static ArrayMap<String, ChatGroup> mGroupChats;
+    static boolean mMessageWaitingAck;
+    static Vector<String> mActiveGroups;
 
     static MessageManager self = null;
 
-    // TODO Need to initialize our singleton via Setters
+    //NOTE Need to initialize our singleton via Setters
     static MessageManager GetInstance() {
         if (self == null) {
             self = new MessageManager();
@@ -46,14 +55,20 @@ public final class MessageManager implements Serializable {
 
     private MessageManager()
     {
-//      TODO Need to initialize our singleton via Setters
         mActivity = null;
         ConnectWebSocket();
         this.userID = "";
         this.currentGroupID = "";
+        mMessageQueue = new ArrayBlockingQueue<JSONObject>(100);
+        mGroupChats = new ArrayMap<>();
+        mActiveGroups = new Vector<String>();
+        mMessageWaitingAck = false;
         StartStatusThread();
+    }
 
-
+    public static String GetGroupID()
+    {
+        return currentGroupID;
     }
 
     //Getters and Setters
@@ -61,18 +76,52 @@ public final class MessageManager implements Serializable {
         mActivity = act;
     }
 
-    public  static void SetUserId(String id) {
+    public static void SetUserId(String id) {
         userID = id;
     }
 
-    public  static void SetGroupId(String id) {
+    public static void SetGroupId(String id) {
         currentGroupID = id;
     }
 
-    public  static void SetCheckStatus(Boolean checkStatus) {
+    public static void SetCheckStatus(Boolean checkStatus) {
         mShowStatus = checkStatus;
     }
 
+    public static void SetShowMessage(Boolean show) {
+        mShowMessages = show;
+    }
+
+    private void AddToActiveGroups(String group)
+    {
+        for (String x : mActiveGroups) {
+            if (x.equals(group))
+            {
+                return;
+            }
+        }
+        mActiveGroups.add(group);
+    }
+
+    private void RemoveFromActiveGroups(String group)
+    {
+        int index = 0;
+        for (String x : mActiveGroups) {
+            if(x.equals(group))
+            {
+                mActiveGroups.remove(index);
+                return;
+            }
+            index++;
+        }
+    }
+
+    private void JoinActiveGroups()
+    {
+        for (String group : mActiveGroups) {
+            JoinGroup(group);
+        }
+    }
 
     private void ConnectWebSocket() {
         URI uri;
@@ -92,6 +141,8 @@ public final class MessageManager implements Serializable {
                 }
                 UpdateUIText("Status Up", R.id.statusText);
                 Register();
+                JoinActiveGroups();
+                FlushMessageQueue();
             }
 
             @Override
@@ -120,6 +171,16 @@ public final class MessageManager implements Serializable {
         mWebSocketClient.connect();
     }
 
+    private void SendJSON(JSONObject json)
+    {
+        if (mWebSocketClient.getReadyState() == WebSocket.READYSTATE.OPEN) {
+            mWebSocketClient.send(json.toString().getBytes(StandardCharsets.UTF_8));
+        } else {
+            Log.i("Websocket", "Buffering Messages");
+            mMessageQueue.add(json);
+        }
+    }
+
     private void ParseJSon(String data) throws JSONException
     {
         if (data == null)
@@ -136,13 +197,30 @@ public final class MessageManager implements Serializable {
                 ListUsers();
                 break;
             case "message":
-                AlertNewMessage();
+                AlertNewMessage(jsonData);
                 break;
             case "error":
                 Log.i("Websocket", "Error from server ");
+                UpdateMessageStatus(type);
                 break;
-            default :
+            default:
                 Log.i("Websocket", "Ack received");
+                UpdateMessageStatus(type);
+        }
+    }
+
+    private void UpdateMessageStatus(String type)
+    {
+        if(mShowMessages && mMessageWaitingAck)
+        {
+            mMessageWaitingAck = false;
+            String status = "Failure";
+            if(type.equals("ack"))
+            {
+                status = "Success";
+                UpdateMessageUI();
+            }
+            UpdateUIText("Message Status: " + status, R.id.messageStatusText);
         }
     }
 
@@ -151,45 +229,53 @@ public final class MessageManager implements Serializable {
         try {
             request.put("action", "register");
             request.put("user_id", userID);
-            mWebSocketClient.send(request.toString().getBytes(StandardCharsets.UTF_8));
+            SendJSON(request);
             Log.i("Websocket", "Registering user " + userID);
         } catch (JSONException e) {
             Log.d("Exceptions", "JSON Error " + e);
         }
     }
 
-    private void SendJSON(JSONObject json)
-    {
-        if (mWebSocketClient.getReadyState() == WebSocket.READYSTATE.OPEN) {
-            mWebSocketClient.send(json.toString().getBytes(StandardCharsets.UTF_8));
-        } else {
-            //TODO implement message buffering
-        }
-    }
-
-    public void JoinGroup() {
+    public void JoinGroup(String group) {
         JSONObject jsonMessage = new JSONObject();
         try {
             jsonMessage.put("action", "join_group");
             jsonMessage.put("user_id", userID);
-            jsonMessage.put("group_id", currentGroupID);
+            jsonMessage.put("group_id", group);
             SendJSON(jsonMessage);
+            AddToActiveGroups(group);
         } catch (JSONException e) {
             Log.d("Exceptions", "JSON Error " + e);
         }
     }
 
-    public void SendMessage(String message)
+    public void LeaveGroup()
     {
-        JSONObject jsonMessage = new JSONObject();
+        JSONObject request = new JSONObject();
         try {
-            jsonMessage.put("action", "message");
-            jsonMessage.put("user_id", userID);
-            jsonMessage.put("group_id", currentGroupID);
-            jsonMessage.put("message", message);
-            SendJSON(jsonMessage);
+            request.put("action", "leave_group");
+            request.put("user_id", userID);
+            request.put("group_id", currentGroupID);
+            SendJSON(request);
         } catch (JSONException e) {
             Log.d("Exceptions", "JSON Error " + e);
+        }
+
+        RemoveFromActiveGroups(currentGroupID);
+
+        if(mGroupChats.containsKey(currentGroupID))
+        {
+            mGroupChats.remove(currentGroupID);
+        }
+        Log.i("Websocket", "Leaving group " + currentGroupID);
+    }
+
+    private void FlushMessageQueue()
+    {
+        while(mMessageQueue.size() > 0)
+        {
+            SendJSON(mMessageQueue.remove());
+            //TODO Consider a delay if constant sending is no good
         }
     }
 
@@ -204,39 +290,13 @@ public final class MessageManager implements Serializable {
         }
     }
 
-    public void GetGroupInfo()
+    public void GetGroupUsers()
     {
         JSONObject request = new JSONObject();
         try {
             request.put("action", "list_group_users");
             request.put("group_id", currentGroupID);
             SendJSON(request);
-        } catch (JSONException e) {
-            Log.d("Exceptions", "JSON Error " + e);
-        }
-    }
-
-    public void GetGroupUsers()
-    {
-        JSONObject request = new JSONObject();
-        try {
-            request.put("action", "list_group_users");
-            request.put("user_id", userID);
-            request.put("group_id", currentGroupID);
-            mWebSocketClient.send(request.toString().getBytes(StandardCharsets.UTF_8));
-        } catch (JSONException e) {
-            Log.d("Exceptions", "JSON Error " + e);
-        }
-    }
-
-    public void LeaveGroup()
-    {
-        JSONObject request = new JSONObject();
-        try {
-            request.put("action", "leave_group");
-            request.put("user_id", userID);
-            request.put("group_id", currentGroupID);
-            mWebSocketClient.send(request.toString().getBytes(StandardCharsets.UTF_8));
         } catch (JSONException e) {
             Log.d("Exceptions", "JSON Error " + e);
         }
@@ -265,6 +325,37 @@ public final class MessageManager implements Serializable {
             }
         }
         mActivity.runOnUiThread(new threadStatusMessenger(msg, mActivity, viewId));
+    }
+
+    private void ShowNotification(String user, String group, String message)
+    {
+        class threadStatusMessenger implements Runnable {
+            Activity mActivity;
+            String mUser;
+            String mGroup;
+            String mMsg;
+
+            threadStatusMessenger(String user, String group, String msg, Activity activity) {
+                mActivity = activity;
+                mUser = user;
+                mGroup = group;
+                mMsg = msg;
+            }
+
+            public void run() {
+                AlertDialog alertDialog = new AlertDialog.Builder(mActivity).create();
+                alertDialog.setTitle(mUser + " messaged group " + mGroup);
+                alertDialog.setMessage(mUser + ": " + mMsg);
+                alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "OK",
+                        new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog, int which) {
+                                dialog.dismiss();
+                            }
+                        });
+                alertDialog.show();
+            }
+        }
+        mActivity.runOnUiThread(new threadStatusMessenger(user, group, message, mActivity));
     }
 
     public void UpdateGroups(String data)
@@ -312,9 +403,66 @@ public final class MessageManager implements Serializable {
         // TODO: Parse and display users
     }
 
-    public void AlertNewMessage ()
+    private void AddToChatMap(String group, String user, String message)
     {
-        // TODO: implement
+        //Store chat in group chat
+        if(!mGroupChats.containsKey(group))
+        {
+            mGroupChats.put(group, new ChatGroup(group));
+        }
+        mGroupChats.get(group).AddChat(user, message);
+    }
+
+
+    public void SendMessage(String message)
+    {
+        JSONObject jsonMessage = new JSONObject();
+        try {
+            jsonMessage.put("action", "message");
+            jsonMessage.put("user_id", userID);
+            jsonMessage.put("group_id", currentGroupID);
+            jsonMessage.put("message", message);
+            SendJSON(jsonMessage);
+            AddToChatMap(currentGroupID, userID, message);
+            mMessageWaitingAck = true;
+        } catch (JSONException e) {
+            Log.d("Exceptions", "JSON Error " + e);
+        }
+    }
+
+    public void AlertNewMessage(JSONObject json)
+    {
+        try {
+            String group = json.getString("group_id");
+            String user = json.getString("from");
+            String message = json.getString("message");
+
+            AddToChatMap(group, user, message);
+
+            if(!currentGroupID.equals(group)) {
+                ShowNotification(user, group, message);
+            }
+
+            if(currentGroupID.equals(group) && mShowMessages)
+            {
+                UpdateMessageUI();
+            }
+
+        } catch(JSONException e) {
+            Log.i("Websocket", "JSON Error parsing new message " + e);
+        }
+    }
+
+    public  void UpdateMessageUI()
+    {
+        String messageString = "";
+        if (mGroupChats.containsKey(currentGroupID)) {
+            Vector<Message> messages = mGroupChats.get(currentGroupID).GetMessages();
+            for (Message msg : messages) {
+                messageString += msg.GetUser() + ": " + msg.GetMessage() + "\n\n";
+            }
+        }
+        UpdateUIText(messageString, R.id.message);
     }
 
     private void StartStatusThread()
@@ -324,6 +472,30 @@ public final class MessageManager implements Serializable {
                 StatusTask();
             }
         }).start();
+    }
+
+    //There is a lag updating the status between activities,
+    //This method allows us to manually trigger an update from the main (UI) thread
+    public void CheckStatus()
+    {
+        TextView msgText = (TextView) mActivity.findViewById(R.id.statusText);
+        if (mWebSocketClient.getReadyState().equals(WebSocket.READYSTATE.OPEN)) {
+            msgText.setText("Status Up");
+        } else {
+            msgText.setText("Status Down");
+            ConnectWebSocket();
+        }
+    }
+
+    private void SendKeepAlive()
+    {
+        JSONObject jsonMessage = new JSONObject();
+        try {
+            jsonMessage.put("action", "keep_alive");
+            SendJSON(jsonMessage);
+        } catch (JSONException e) {
+            Log.d("Exceptions", "JSON Error " + e);
+        }
     }
 
     private void StatusTask()
@@ -336,10 +508,11 @@ public final class MessageManager implements Serializable {
 
         while(true)
         {
-            Log.i("Websocket", "Socket State " + mWebSocketClient.getReadyState());
+            Log.i("Status", "Socket State " + mWebSocketClient.getReadyState());
             if (mShowStatus) {
                 if (mWebSocketClient.getReadyState().equals(WebSocket.READYSTATE.OPEN)) {
                     UpdateUIText("Status Up", R.id.statusText);
+                    SendKeepAlive();
                 } else {
                     UpdateUIText("Status Down", R.id.statusText);
                     ConnectWebSocket();
