@@ -446,6 +446,17 @@ public final class MessageManager implements Serializable {
         }
     }
 
+    private void SendKeepAlive()
+    {
+        JSONObject jsonMessage = new JSONObject();
+        try {
+            jsonMessage.put("action", "keep_alive");
+            SendJSON(jsonMessage);
+        } catch (JSONException e) {
+            Log.d("Exceptions", "JSON Error " + e);
+        }
+    }
+
     private void StatusTask()
     {
         try {
@@ -460,6 +471,7 @@ public final class MessageManager implements Serializable {
             if (mShowStatus) {
                 if (mWebSocketClient.getReadyState().equals(WebSocket.READYSTATE.OPEN)) {
                     UpdateUIText("Status Up", R.id.statusText);
+                    SendKeepAlive();
                 } else {
                     UpdateUIText("Status Down", R.id.statusText);
                     ConnectWebSocket();
