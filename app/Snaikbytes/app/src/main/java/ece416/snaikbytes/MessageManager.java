@@ -92,14 +92,24 @@ public final class MessageManager implements Serializable {
         mShowMessages = show;
     }
 
-    private void AddToActiveGroups(String group)
+    private boolean IsActiveGroup(String group)
     {
         for (String x : mActiveGroups) {
             if (x.equals(group))
             {
-                return;
+                return true;
             }
         }
+        return false;
+    }
+
+    private void AddToActiveGroups(String group)
+    {
+        if(IsActiveGroup(group))
+        {
+            return;
+        }
+        //else..
         mActiveGroups.add(group);
     }
 
@@ -177,6 +187,7 @@ public final class MessageManager implements Serializable {
             mWebSocketClient.send(json.toString().getBytes(StandardCharsets.UTF_8));
         } else {
             Log.i("Websocket", "Buffering Messages");
+            UpdateUIText("Message Status: Buffered", R.id.messageStatusText);
             mMessageQueue.add(json);
         }
     }
@@ -243,8 +254,12 @@ public final class MessageManager implements Serializable {
             jsonMessage.put("user_id", userID);
             jsonMessage.put("group_id", group);
             SendJSON(jsonMessage);
+
+            if(!IsActiveGroup(group))
+            {
+                ShowAlert(group);
+            }
             AddToActiveGroups(group);
-            ShowAlert("Group joined.");
         } catch (JSONException e) {
             Log.d("Exceptions", "JSON Error " + e);
         }
