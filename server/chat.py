@@ -26,8 +26,13 @@ class ChatService(object):
             self.users.append(user)
             app.logger.info(u'Registered user {}'.format(user_id))
         else:
-            # TODO: Overwrite current user with new socket
-            app.logger.info('User tried to register with taken id')
+            user =  self._get_user_by_id(user_id)
+
+            if not user.is_alive():
+                user.socket = socket
+                app.logger.info(u'Overwrote user {} socket with new socket'.format(user_id))
+            else:
+                app.logger.info('User tried to register with taken id')
 
     def list_groups(self, socket):
         groups = []
@@ -66,6 +71,7 @@ class ChatService(object):
         if not group:
             group = Group(group_id)
             self.groups.append(group)
+
             app.logger.info(u'Created new group with id {}'.format(user_id, group_id))
 
         added = group.add_user(user)
@@ -78,7 +84,7 @@ class ChatService(object):
         if added:
             app.logger.info(u'Added user {} to group {}'.format(user_id, group_id))
         else:
-            app.logger.info(u'Tried to add user {} to group {} but they already in there'.format(user_id, group_id))
+            app.logger.info(u'Tried to add user {} to group {} but theyre already in there'.format(user_id, group_id))
 
     def remove_user_from_group(self, user_id, group_id, socket):
         user = self._get_user_by_id(user_id)
@@ -95,7 +101,7 @@ class ChatService(object):
             self.user_group_map[user.id].remove(group)
             app.logger.info(u'Removed user {} from group {}'.format(user_id, group_id))
         else:
-            app.logger.info(u'Tried to remove user {} from group {}, but they werent even in there xD'.format(user_id, group_id))
+            app.logger.info(u'Tried to remove user {} from group {}, but they werent even in there'.format(user_id, group_id))
 
     def send_message(self, user_id, group_id, message, socket):
         self._clean_dead_users()
@@ -122,20 +128,20 @@ class ChatService(object):
         user = self._get_user_by_id(user_id)
         group = self._get_group_by_id(group_id)
 
-        # user_recreated = False
-        # if not user:
-        #     user_recreated = True
-        #     user = User(user_id, socket)
-        #     self.users.append(user)
-        #     app.logger.info(u'Recreated user with id {} from message'.format(user_id))
+        user_recreated = False
+        if not user:
+            user_recreated = True
+            user = User(user_id, socket)
+            self.users.append(user)
+            app.logger.info(u'Recreated user with id {} from message'.format(user_id))
 
-        # if not group:
-        #     group = Group(group_id)
-        #     group.add_user(user)
-        #     app.logger.info(u'Recreated group with id {} with user with id {} from message'.format(group_id, user_id))
-        # elif user_recreated:
-        #     group.add_user(user)
-        #     app.logger.info(u'Added user with id {} back to group with id {} from message'.format(user_id, group_id))
+        if not group:
+            group = Group(group_id)
+            group.add_user(user)
+            app.logger.info(u'Recreated group with id {} with user with id {} from message'.format(group_id, user_id))
+        elif user_recreated:
+            group.add_user(user)
+            app.logger.info(u'Added user with id {} back to group with id {} from message'.format(user_id, group_id))
 
         return user, group
 
@@ -157,6 +163,7 @@ class ChatService(object):
 
         if dead_users:
             app.logger.info(u'Cleaned up {} dead connections'.format(len(dead_users)))
+
             for u in dead_users:
                app.logger.info(u'Cleaned up {}'.format(u.id))
 
@@ -171,6 +178,7 @@ class ChatService(object):
             if u.id == user_id:
                 return u
         return None
+
 
 chat = ChatService()
 
@@ -225,9 +233,9 @@ def _send_ack(socket):
     socket.send(serialize({'type': 'ack'}))
 
 # Uncomment the following to run locally and run 'python chat.py' from the root folder
-if __name__ == "__main__":
-    from gevent import pywsgi
-    from geventwebsocket.handler import WebSocketHandler
-    server = pywsgi.WSGIServer(('', 5000), app, handler_class=WebSocketHandler)
-    server.serve_forever()
+# if __name__ == "__main__":
+#     from gevent import pywsgi
+#     from geventwebsocket.handler import WebSocketHandler
+#     server = pywsgi.WSGIServer(('', 5000), app, handler_class=WebSocketHandler)
+#     server.serve_forever()
 
