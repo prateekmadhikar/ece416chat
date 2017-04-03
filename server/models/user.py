@@ -16,7 +16,11 @@ class User:
 
     @property
     def is_alive(self):
-        return self.socket.closed is False
+        try:
+            self.socket.send(serialize({"type": "ack"}))
+            return True
+        except Exception:
+            return False
 
     def send_ack(self):
         self.socket.send(serialize({'type': 'ack'}))
