@@ -112,20 +112,20 @@ class ChatService(object):
         user = self._get_user_by_id(user_id)
         group = self._get_group_by_id(group_id)
 
-        user_recreated = False
-        if not user:
-            user_recreated = True
-            user = User(user_id, socket)
-            self.users.append(user)
-            app.logger.info(u'Recreated user with id {} from message'.format(user_id))
+        # user_recreated = False
+        # if not user:
+        #     user_recreated = True
+        #     user = User(user_id, socket)
+        #     self.users.append(user)
+        #     app.logger.info(u'Recreated user with id {} from message'.format(user_id))
 
-        if not group:
-            group = Group(group_id)
-            group.add_user(user)
-            app.logger.info(u'Recreated group with id {} with user with id {} from message'.format(group_id, user_id))
-        elif user_recreated:
-            group.add_user(user)
-            app.logger.info(u'Added user with id {} back to group with id {} from message'.format(user_id, group_id))
+        # if not group:
+        #     group = Group(group_id)
+        #     group.add_user(user)
+        #     app.logger.info(u'Recreated group with id {} with user with id {} from message'.format(group_id, user_id))
+        # elif user_recreated:
+        #     group.add_user(user)
+        #     app.logger.info(u'Added user with id {} back to group with id {} from message'.format(user_id, group_id))
 
         return user, group
 
@@ -186,7 +186,8 @@ def socket_in_handler(ws):
         json_dict = deserialize(message)
         action = json_dict.get('action')
 
-        #import ipdb; ipdb.set_trace()
+        import ipdb; ipdb.set_trace()
+
         if action == 'register':
             chat.register_user(json_dict.get('user_id'), ws)
             _send_ack(ws)
