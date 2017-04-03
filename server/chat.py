@@ -186,8 +186,6 @@ def socket_in_handler(ws):
         json_dict = deserialize(message)
         action = json_dict.get('action')
 
-        import ipdb; ipdb.set_trace()
-
         if action == 'register':
             chat.register_user(json_dict.get('user_id'), ws)
             _send_ack(ws)
