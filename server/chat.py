@@ -64,6 +64,7 @@ class ChatService(object):
         if not group:
             group = Group(group_id)
             self.groups.append(group)
+            app.logger.info(u'Created new group with id {}'.format(user_id, group_id))
 
         added = group.add_user(user)
 
@@ -75,7 +76,7 @@ class ChatService(object):
         if added:
             app.logger.info(u'Added user {} to group {}'.format(user_id, group_id))
         else:
-            app.logger.info(u'Tried to add user {} to group {} but they already in there lmfaoo'.format(user_id, group_id))
+            app.logger.info(u'Tried to add user {} to group {} but they already in there'.format(user_id, group_id))
 
     def remove_user_from_group(self, user_id, group_id, socket):
         user = self._get_user_by_id(user_id)
