@@ -45,6 +45,7 @@ class ChatService(object):
 
         if not group:
             socket.send(serialize({'type': 'error', 'message': 'Invalid group ID: {}'.format(group_id)}))
+            return
 
         users = []
         for user in group.users:
@@ -60,6 +61,7 @@ class ChatService(object):
 
         if not user:
             socket.send(serialize({'type': 'error', 'message': 'Invalid user ID'}))
+            return
 
         if not group:
             group = Group(group_id)
@@ -84,6 +86,7 @@ class ChatService(object):
 
         if not user or not group:
             socket.send(serialize({'type': 'error', 'message': 'Invalid group or user ID'}))
+            return
 
         # This will be False if the user wasn't in the group to begin with
         removed = group.remove_user(user)
@@ -104,7 +107,13 @@ class ChatService(object):
 
     def flush_data(self, socket):
         self.users = []
-        self.groups = [Group('Group {}'.format(i)) for i in range(5)]
+
+        while self.groups:
+            self.groups.pop()
+
+        for i in range(5):
+            self.groups.append(Group('Group {}'.format(i)))
+
         self.user_group_map = {}
 
         app.logger.info(u'Flushed chat users and groups')
