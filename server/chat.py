@@ -101,7 +101,7 @@ class ChatService(object):
         group.broadcast(user, message)
         app.logger.info(u'User {} messaged {} to group {}'.format(user_id, message, group_id))
 
-    def flush_data(self, user_id, socket):
+    def flush_data(self, socket):
         self.users = []
         self.groups = [Group('Group {}'.format(i)) for i in range(5)]
         self.user_group_map = {}
@@ -205,7 +205,7 @@ def socket_in_handler(ws):
         elif action == 'message':
             chat.send_message(json_dict.get('user_id'), json_dict.get('group_id'), json_dict.get('message'), ws)
         elif action == 'flush':
-            chat.flush_data(json_dict.get('user_id'), ws)
+            chat.flush_data(ws)
             _send_ack(ws)
         else:
             app.logger.info(u'Got socket message with invalid action: {}'.format(action))
