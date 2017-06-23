@@ -1,3 +1,3 @@
-# Server app for the ECE 416 project
+# Server + Andriod app for the ECE 416 (Advanced Networking) project
 
-A much shittier WhatsApp
+A much ~~shittier~~ less featureful WhatsApp
