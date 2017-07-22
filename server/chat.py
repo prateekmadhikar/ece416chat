@@ -12,6 +12,7 @@ app.debug = True
 
 sockets = Sockets(app)
 
+
 class ChatService(object):
 
     def __init__(self):
@@ -22,11 +23,11 @@ class ChatService(object):
     def register_user(self, user_id, socket):
         user = User(user_id, socket)
 
-        if not user in self.users:
+        if user not in self.users:
             self.users.append(user)
             app.logger.info(u'Registered user {}'.format(user_id))
         else:
-            user =  self._get_user_by_id(user_id)
+            user = self._get_user_by_id(user_id)
 
             if not user.is_alive():
                 user.socket = socket
@@ -146,8 +147,6 @@ class ChatService(object):
         return user, group
 
     def _clean_dead_users(self):
-        old_len = len(self.users)
-
         active_users = [u for u in self.users if u.is_alive]
         dead_users = [u for u in self.users if u not in active_users]
         self.users = active_users
@@ -165,7 +164,7 @@ class ChatService(object):
             app.logger.info(u'Cleaned up {} dead connections'.format(len(dead_users)))
 
             for u in dead_users:
-               app.logger.info(u'Cleaned up {}'.format(u.id))
+                app.logger.info(u'Cleaned up {}'.format(u.id))
 
     def _get_group_by_id(self, group_id):
         for g in self.groups:
