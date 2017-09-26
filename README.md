@@ -1,3 +1,10 @@
-# Server + Andriod app for the ECE 416 (Advanced Networking) project
+# Server + Andriod app for simple chat
 
-A much ~~shittier~~ less featureful WhatsApp
+You can:
+  - Not sign up with Facebook (or anything else)
+  - Join groups
+  - Talk to the groups you join
+  - Leave the groups you joined
+  - Get notified about messages
+  - ...
+  - Thats it
